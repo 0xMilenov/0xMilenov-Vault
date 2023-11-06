@@ -5,7 +5,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-solidity/contracts/utils/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "openzeppelin-solidity/contracts/access/Ownable2Step.sol";
 import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
 
 /**
@@ -14,23 +14,40 @@ import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
  * @notice Assignment-1
  * @author 0xMilenov
  */
-contract Vault {
+contract Vault is ERC20, ReentrancyGuard, Ownable2Step {
+    using SafeERC20 for IERC20;
+
     IERC20 public immutable token;
 
     uint public totalSupply;
+
     mapping(address => uint) public balanceOf;
 
-    /**
-     * @notice Emitted when a user deposits tokens into the vault
-     */
+    // @notice Emitted when a user deposits tokens into the vault
     event Deposit(address indexed from, uint amount);
 
-    /**
-     * @notice Emitted when a user withdraws tokens from the vault
-     */
+    // @notice Emitted when a user withdraws tokens from the vault
     event Withdraw(address indexed to, uint amount);
 
-    constructor(address _token) {
+    // Error messages
+    error ZeroAddressNotAllowed();
+    error ZeroAmountNotAllowed();
+    error InsufficientBalance();
+
+    /**
+     * param _name - name of the vault token
+     * param _symbol - symbol of the vault token
+     * param _token - address of the asset token
+     */
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        IERC20 _token
+    ) ERC20(_name, _symbol) Ownable(msg.sender) {
+        if (address(_token) == address(0)) {
+            revert ZeroAddressNotAllowed();
+        }
+
         token = IERC20(_token);
     }
 
@@ -48,7 +65,7 @@ contract Vault {
      * @notice Deposits amount into lending vault and mint shares to user
      * @param _amount - amount of asset tokens to deposit in token units
      */
-    function deposit(uint _amount) external {
+    function deposit(uint _amount) external nonReentrant {
         /*
         a = amount
         B = balance of token before deposit
@@ -59,6 +76,13 @@ contract Vault {
 
         s = aT / B
         */
+
+        // amount + total need to be < max capacity
+
+        if (_amount == 0) {
+            revert ZeroAmountNotAllowed();
+        }
+
         uint shares;
         if (totalSupply == 0) {
             shares = _amount;
@@ -66,8 +90,8 @@ contract Vault {
             shares = (_amount * totalSupply) / token.balanceOf(address(this));
         }
 
+        token.safeTransferFrom(msg.sender, address(this), _amount);
         _mint(msg.sender, shares);
-        token.transferFrom(msg.sender, address(this), _amount);
 
         emit Deposit(msg.sender, _amount);
     }
@@ -76,7 +100,7 @@ contract Vault {
      * @notice Withdraws asset from lending vault, burns token from user
      * @param _shares - Amount of tokens to burn in token units
      */
-    function withdraw(uint _shares) external {
+    function withdraw(uint _shares) external nonReentrant {
         /*
         a = amount
         B = balance of token before withdraw
@@ -87,9 +111,17 @@ contract Vault {
 
         a = sB / T
         */
+
+        if (_shares == 0) {
+            revert ZeroAmountNotAllowed();
+        }
+        if (_shares > balanceOf[msg.sender]) {
+            revert InsufficientBalance();
+        }
+
         uint amount = (_shares * token.balanceOf(address(this))) / totalSupply;
         _burn(msg.sender, _shares);
-        token.transfer(msg.sender, amount);
+        token.safeTransfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount);
     }
