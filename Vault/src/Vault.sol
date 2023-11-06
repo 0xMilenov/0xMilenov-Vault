@@ -1,11 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-solidity/contracts/utils/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
+
+/**
+ * @title 0xMilenov Vault
+ * @dev A lending vault that mints shares to depositors and burns shares from withdrawers
+ * @notice Assignment-1
+ * @author 0xMilenov
+ */
 contract Vault {
     IERC20 public immutable token;
 
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
+
+    /**
+     * @notice Emitted when a user deposits tokens into the vault
+     */
+    event Deposit(address indexed from, uint amount);
+
+    /**
+     * @notice Emitted when a user withdraws tokens from the vault
+     */
+    event Withdraw(address indexed to, uint amount);
 
     constructor(address _token) {
         token = IERC20(_token);
@@ -45,6 +68,8 @@ contract Vault {
 
         _mint(msg.sender, shares);
         token.transferFrom(msg.sender, address(this), _amount);
+
+        emit Deposit(msg.sender, _amount);
     }
 
     /**
@@ -65,5 +90,7 @@ contract Vault {
         uint amount = (_shares * token.balanceOf(address(this))) / totalSupply;
         _burn(msg.sender, _shares);
         token.transfer(msg.sender, amount);
+
+        emit Withdraw(msg.sender, amount);
     }
 }
