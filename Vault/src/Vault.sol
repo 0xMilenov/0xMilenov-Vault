@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; ?
-import "./IERC20.sol"; // ?
-
 contract Vault {
     IERC20 public immutable token;
 
@@ -24,6 +21,10 @@ contract Vault {
         balanceOf[_from] -= _shares;
     }
 
+    /**
+     * @notice Deposits amount into lending vault and mint shares to user
+     * @param _amount - amount of asset tokens to deposit in token units
+     */
     function deposit(uint _amount) external {
         /*
         a = amount
@@ -46,6 +47,10 @@ contract Vault {
         token.transferFrom(msg.sender, address(this), _amount);
     }
 
+    /**
+     * @notice Withdraws asset from lending vault, burns token from user
+     * @param _shares - Amount of tokens to burn in token units
+     */
     function withdraw(uint _shares) external {
         /*
         a = amount
