@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-solidity/contracts/utils/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/access/Ownable2Step.sol";
-import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
+import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin/access/Ownable.sol";
+import "openzeppelin/utils/ReentrancyGuard.sol";
+import "openzeppelin/utils/math/Math.sol";
 
 /**
  * @title 0xMilenov Vault
@@ -14,7 +13,7 @@ import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
  * @notice Assignment-1
  * @author 0xMilenov
  */
-contract Vault is ERC20, ReentrancyGuard, Ownable2Step {
+contract Vault is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable token;
@@ -43,20 +42,20 @@ contract Vault is ERC20, ReentrancyGuard, Ownable2Step {
         string memory _name,
         string memory _symbol,
         IERC20 _token
-    ) ERC20(_name, _symbol) Ownable(msg.sender) {
+    ) Ownable(msg.sender) {
         if (address(_token) == address(0)) {
             revert ZeroAddressNotAllowed();
         }
 
-        token = IERC20(_token);
+        token = _token;
     }
 
-    function _mint(address _to, uint _shares) private {
+    function _mint(address _to, uint _shares) public onlyOwner {
         totalSupply += _shares;
         balanceOf[_to] += _shares;
     }
 
-    function _burn(address _from, uint _shares) private {
+    function _burn(address _from, uint _shares) public onlyOwner {
         totalSupply -= _shares;
         balanceOf[_from] -= _shares;
     }
@@ -120,6 +119,7 @@ contract Vault is ERC20, ReentrancyGuard, Ownable2Step {
         }
 
         uint amount = (_shares * token.balanceOf(address(this))) / totalSupply;
+        // if amount...
         _burn(msg.sender, _shares);
         token.safeTransfer(msg.sender, amount);
 
