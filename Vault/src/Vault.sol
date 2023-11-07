@@ -5,7 +5,6 @@ import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/ReentrancyGuard.sol";
-import "openzeppelin/utils/math/Math.sol";
 
 /**
  * @title 0xMilenov Vault
@@ -14,13 +13,23 @@ import "openzeppelin/utils/math/Math.sol";
  * @author 0xMilenov
  */
 contract Vault is ReentrancyGuard, Ownable {
+    // @notice SafeERC20 wrapper for IERC20
     using SafeERC20 for IERC20;
 
+    // @notice Address of the asset token
     IERC20 public immutable token;
 
+    // @notice Total supply of shares
     uint public totalSupply;
 
+    // @notice Mapping of user address to their balance
     mapping(address => uint) public balanceOf;
+
+    // @notice Emiited when a user mints shares
+    event Mint(address indexed to, uint amount);
+
+    // @notice Emitted when a user burns shares
+    event Burn(address indexed from, uint amount);
 
     // @notice Emitted when a user deposits tokens into the vault
     event Deposit(address indexed from, uint amount);
@@ -28,21 +37,16 @@ contract Vault is ReentrancyGuard, Ownable {
     // @notice Emitted when a user withdraws tokens from the vault
     event Withdraw(address indexed to, uint amount);
 
-    // Error messages
+    // @notice Error messages
     error ZeroAddressNotAllowed();
     error ZeroAmountNotAllowed();
     error InsufficientBalance();
 
     /**
-     * param _name - name of the vault token
-     * param _symbol - symbol of the vault token
+     * @notice Constructor
      * param _token - address of the asset token
      */
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        IERC20 _token
-    ) Ownable(msg.sender) {
+    constructor(IERC20 _token) Ownable(msg.sender) {
         if (address(_token) == address(0)) {
             revert ZeroAddressNotAllowed();
         }
@@ -50,14 +54,28 @@ contract Vault is ReentrancyGuard, Ownable {
         token = _token;
     }
 
-    function _mint(address _to, uint _shares) public onlyOwner {
+    /**
+     * @notice Mints shares to user
+     * @param _to - address of user to mint shares to
+     * @param _shares - amount of shares to mint
+     */
+    function _mint(address _to, uint _shares) public {
         totalSupply += _shares;
         balanceOf[_to] += _shares;
+
+        emit Mint(_to, _shares);
     }
 
-    function _burn(address _from, uint _shares) public onlyOwner {
+    /**
+     * @notice Burns shares from user
+     * @param _from - address of user to burn shares from
+     * @param _shares - amount of shares to burn
+     */
+    function _burn(address _from, uint _shares) public {
         totalSupply -= _shares;
         balanceOf[_from] -= _shares;
+
+        emit Burn(_from, _shares);
     }
 
     /**
@@ -119,7 +137,6 @@ contract Vault is ReentrancyGuard, Ownable {
         }
 
         uint amount = (_shares * token.balanceOf(address(this))) / totalSupply;
-        // if amount...
         _burn(msg.sender, _shares);
         token.safeTransfer(msg.sender, amount);
 
