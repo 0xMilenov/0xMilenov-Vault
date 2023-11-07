@@ -18,7 +18,7 @@ contract VaultTest is Test {
         user = address(0x1);
 
         token = new MockERC20("MockToken", "MKT");
-        vault = new Vault("VaultToken", "VT", token);
+        vault = new Vault(token);
 
         token.approve(address(vault), type(uint256).max);
         vm.startPrank(user);

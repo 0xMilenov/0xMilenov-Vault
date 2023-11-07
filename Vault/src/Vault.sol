@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/ERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/ReentrancyGuard.sol";
@@ -41,6 +42,7 @@ contract Vault is ReentrancyGuard, Ownable {
     error ZeroAddressNotAllowed();
     error ZeroAmountNotAllowed();
     error InsufficientBalance();
+    error TokenDecimalsMustBeLessThan18();
 
     /**
      * @notice Constructor
@@ -49,6 +51,10 @@ contract Vault is ReentrancyGuard, Ownable {
     constructor(IERC20 _token) Ownable(msg.sender) {
         if (address(_token) == address(0)) {
             revert ZeroAddressNotAllowed();
+        }
+
+        if (ERC20(address(_token)).decimals() > 18) {
+            revert TokenDecimalsMustBeLessThan18();
         }
 
         token = _token;
@@ -93,8 +99,6 @@ contract Vault is ReentrancyGuard, Ownable {
 
         s = aT / B
         */
-
-        // amount + total need to be < max capacity
 
         if (_amount == 0) {
             revert ZeroAmountNotAllowed();
