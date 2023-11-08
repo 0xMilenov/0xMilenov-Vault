@@ -23,10 +23,13 @@ contract Vault is ReentrancyGuard, Ownable {
     // @notice Total supply of shares
     uint public totalSupply;
 
+    // @notice Internal accounting of the vault's token balance
+    uint256 private _vaultBalance;
+
     // @notice Mapping of user address to their balance
     mapping(address => uint) public balanceOf;
 
-    // @notice Emiited when a user mints shares
+    // @notice Emitted when a user mints shares
     event Mint(address indexed to, uint amount);
 
     // @notice Emitted when a user burns shares
@@ -43,10 +46,11 @@ contract Vault is ReentrancyGuard, Ownable {
     error ZeroAmountNotAllowed();
     error InsufficientBalance();
     error TokenDecimalsMustBeLessThan18();
+    error InsufficientSharesMinted();
 
     /**
      * @notice Constructor
-     * param _token - address of the asset token
+     * @param _token - address of the asset token
      */
     constructor(IERC20 _token) Ownable(msg.sender) {
         if (address(_token) == address(0)) {
@@ -58,6 +62,7 @@ contract Vault is ReentrancyGuard, Ownable {
         }
 
         token = _token;
+        _vaultBalance = 0;
     }
 
     /**
@@ -87,52 +92,36 @@ contract Vault is ReentrancyGuard, Ownable {
     /**
      * @notice Deposits amount into lending vault and mint shares to user
      * @param _amount - amount of asset tokens to deposit in token units
+     * @param _minSharesAmt - Minimum amount of shares tokens to receive on deposit
      */
-    function deposit(uint _amount) external nonReentrant {
-        /*
-        a = amount
-        B = balance of token before deposit
-        T = total supply
-        s = shares to mint
-
-        (T + s) / T = (a + B) / B 
-
-        s = aT / B
-        */
-
+    function deposit(uint _amount, uint _minSharesAmt) external nonReentrant {
         if (_amount == 0) {
             revert ZeroAmountNotAllowed();
         }
 
         uint shares;
-        if (totalSupply == 0) {
+        if (totalSupply == 0 || _vaultBalance == 0) {
             shares = _amount;
         } else {
-            shares = (_amount * totalSupply) / token.balanceOf(address(this));
+            shares = (_amount * totalSupply) / _vaultBalance;
         }
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
+        _vaultBalance += _amount;
         _mint(msg.sender, shares);
+
+        if (shares < _minSharesAmt) {
+            revert InsufficientSharesMinted();
+        }
 
         emit Deposit(msg.sender, _amount);
     }
 
     /**
-     * @notice Withdraws asset from lending vault, burns token from user
-     * @param _shares - Amount of tokens to burn in token units
+     * @notice Withdraws asset from lending vault, burns shares from user
+     * @param _shares - amount of shares to burn
      */
     function withdraw(uint _shares) external nonReentrant {
-        /*
-        a = amount
-        B = balance of token before withdraw
-        T = total supply
-        s = shares to burn
-
-        (T - s) / T = (B - a) / B 
-
-        a = sB / T
-        */
-
         if (_shares == 0) {
             revert ZeroAmountNotAllowed();
         }
@@ -140,8 +129,9 @@ contract Vault is ReentrancyGuard, Ownable {
             revert InsufficientBalance();
         }
 
-        uint amount = (_shares * token.balanceOf(address(this))) / totalSupply;
+        uint amount = (_shares * _vaultBalance) / totalSupply;
         _burn(msg.sender, _shares);
+        _vaultBalance -= amount;
         token.safeTransfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount);
