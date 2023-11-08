@@ -26,6 +26,10 @@ contract Vault is ReentrancyGuard, Ownable {
     // @notice Internal accounting of the vault's token balance
     uint256 private _vaultBalance;
 
+    // @notice Virtual offsets for shares and assets
+    uint256 private constant VIRTUAL_ASSETS = 1e18;
+    uint256 private constant VIRTUAL_SHARES = 1e18;
+
     // @notice Mapping of user address to their balance
     mapping(address => uint) public balanceOf;
 
@@ -99,18 +103,23 @@ contract Vault is ReentrancyGuard, Ownable {
             revert ZeroAmountNotAllowed();
         }
 
-        uint shares;
+        uint sharesToMint;
+        uint adjustedTotalSupply = totalSupply + VIRTUAL_SHARES;
+        uint adjustedVaultBalance = _vaultBalance + VIRTUAL_ASSETS;
+
         if (totalSupply == 0 || _vaultBalance == 0) {
-            shares = _amount;
+            sharesToMint = _amount + VIRTUAL_SHARES;
         } else {
-            shares = (_amount * totalSupply) / _vaultBalance;
+            sharesToMint =
+                (_amount * adjustedTotalSupply) /
+                adjustedVaultBalance;
         }
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         _vaultBalance += _amount;
-        _mint(msg.sender, shares);
+        _mint(msg.sender, sharesToMint);
 
-        if (shares < _minSharesAmt) {
+        if (sharesToMint < _minSharesAmt) {
             revert InsufficientSharesMinted();
         }
 
