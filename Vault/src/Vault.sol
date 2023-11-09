@@ -75,6 +75,10 @@ contract Vault is ReentrancyGuard, Ownable {
      * @param _shares - amount of shares to mint
      */
     function _mint(address _to, uint _shares) public {
+        if (_to == address(0)) {
+            revert ZeroAddressNotAllowed();
+        }
+
         totalSupply += _shares;
         balanceOf[_to] += _shares;
 
@@ -87,6 +91,10 @@ contract Vault is ReentrancyGuard, Ownable {
      * @param _shares - amount of shares to burn
      */
     function _burn(address _from, uint _shares) public {
+        if (_from == address(0)) {
+            revert ZeroAddressNotAllowed();
+        }
+
         totalSupply -= _shares;
         balanceOf[_from] -= _shares;
 
@@ -99,11 +107,16 @@ contract Vault is ReentrancyGuard, Ownable {
      * @param _minSharesAmt - Minimum amount of shares tokens to receive on deposit
      */
     function deposit(uint _amount, uint _minSharesAmt) external nonReentrant {
+        uint sharesToMint;
+
         if (_amount == 0) {
             revert ZeroAmountNotAllowed();
         }
 
-        uint sharesToMint;
+        if (_minSharesAmt == 0) {
+            revert ZeroAmountNotAllowed();
+        }
+
         uint adjustedTotalSupply = totalSupply + VIRTUAL_SHARES;
         uint adjustedVaultBalance = _vaultBalance + VIRTUAL_ASSETS;
 
@@ -115,13 +128,15 @@ contract Vault is ReentrancyGuard, Ownable {
                 adjustedVaultBalance;
         }
 
-        token.safeTransferFrom(msg.sender, address(this), _amount);
-        _vaultBalance += _amount;
-        _mint(msg.sender, sharesToMint);
-
         if (sharesToMint < _minSharesAmt) {
             revert InsufficientSharesMinted();
         }
+
+        _vaultBalance += _amount;
+
+        _mint(msg.sender, sharesToMint);
+
+        token.safeTransferFrom(msg.sender, address(this), _amount);
 
         emit Deposit(msg.sender, _amount);
     }
@@ -130,7 +145,7 @@ contract Vault is ReentrancyGuard, Ownable {
      * @notice Withdraws asset from lending vault, burns shares from user
      * @param _shares - amount of shares to burn
      */
-    function withdraw(uint _shares) external nonReentrant {
+    function withdraw(uint _shares, uint _minSharesAmt) external nonReentrant {
         if (_shares == 0) {
             revert ZeroAmountNotAllowed();
         }
@@ -139,8 +154,15 @@ contract Vault is ReentrancyGuard, Ownable {
         }
 
         uint amount = (_shares * _vaultBalance) / totalSupply;
-        _burn(msg.sender, _shares);
+
+        if (amount < _minSharesAmt) {
+            revert InsufficientSharesMinted();
+        }
+
         _vaultBalance -= amount;
+
+        _burn(msg.sender, _shares);
+
         token.safeTransfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount);
