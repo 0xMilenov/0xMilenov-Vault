@@ -144,6 +144,7 @@ contract Vault is ReentrancyGuard, Ownable {
     /**
      * @notice Withdraws asset from lending vault, burns shares from user
      * @param _shares - amount of shares to burn
+     * @param _minSharesAmt - Minimum amount of shares tokens to burn on withdraw
      */
     function withdraw(uint _shares, uint _minSharesAmt) external nonReentrant {
         if (_shares == 0) {
