@@ -104,7 +104,7 @@ contract Vault is ReentrancyGuard, Ownable {
      */
     function deposit(uint _amount, uint _minSharesAmt) external nonReentrant {
         uint sharesToMint;
-     uint constant INITIAL_SHARE_PRICE = 1e3;
+        uint constant INITIAL_SHARE_PRICE = 1e3;
 
         if (_amount == 0) {
             revert ZeroAmountNotAllowed();
