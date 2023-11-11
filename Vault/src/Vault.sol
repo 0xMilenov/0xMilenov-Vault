@@ -26,10 +26,6 @@ contract Vault is ReentrancyGuard, Ownable {
     // @notice Internal accounting of the vault's token balance
     uint256 private _vaultBalance;
 
-    // @notice Virtual offsets for shares and assets
-    uint256 private constant VIRTUAL_ASSETS = 1e18;
-    uint256 private constant VIRTUAL_SHARES = 1e18;
-
     // @notice Mapping of user address to their balance
     mapping(address => uint) public balanceOf;
 
@@ -108,6 +104,7 @@ contract Vault is ReentrancyGuard, Ownable {
      */
     function deposit(uint _amount, uint _minSharesAmt) external nonReentrant {
         uint sharesToMint;
+     uint constant INITIAL_SHARE_PRICE = 1e3;
 
         if (_amount == 0) {
             revert ZeroAmountNotAllowed();
@@ -117,15 +114,10 @@ contract Vault is ReentrancyGuard, Ownable {
             revert ZeroAmountNotAllowed();
         }
 
-        uint adjustedTotalSupply = totalSupply + VIRTUAL_SHARES;
-        uint adjustedVaultBalance = _vaultBalance + VIRTUAL_ASSETS;
-
         if (totalSupply == 0 || _vaultBalance == 0) {
-            sharesToMint = _amount + VIRTUAL_SHARES;
+            sharesToMint = _amount * INITIAL_SHARE_PRICE;
         } else {
-            sharesToMint =
-                (_amount * adjustedTotalSupply) /
-                adjustedVaultBalance;
+            sharesToMint = (_amount * totalSupply) / _vaultBalance;
         }
 
         if (sharesToMint < _minSharesAmt) {
