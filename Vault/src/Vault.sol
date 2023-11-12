@@ -70,7 +70,7 @@ contract Vault is ReentrancyGuard, Ownable {
      * @param _to - address of user to mint shares to
      * @param _shares - amount of shares to mint
      */
-    function _mint(address _to, uint _shares) public {
+    function _mint(address _to, uint _shares) internal {
         if (_to == address(0)) {
             revert ZeroAddressNotAllowed();
         }
@@ -86,7 +86,7 @@ contract Vault is ReentrancyGuard, Ownable {
      * @param _from - address of user to burn shares from
      * @param _shares - amount of shares to burn
      */
-    function _burn(address _from, uint _shares) public {
+    function _burn(address _from, uint _shares) internal {
         if (_from == address(0)) {
             revert ZeroAddressNotAllowed();
         }
